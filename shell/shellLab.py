@@ -2,6 +2,7 @@
 
 import sys, os, time, re
 
+#executes commands from the PATH
 def executeCommand(arg):
     for dir in re.split(":", os.environ["PATH"]):
         prog = "%s/%s" % (dir, arg[0])
@@ -9,7 +10,8 @@ def executeCommand(arg):
             os.execve(prog, arg, os.environ)
         except FileNotFoundError:
             pass
-        
+
+#write to file        
 def toFile(arg):
     if (arg != ""):
         os.close(1)
@@ -18,12 +20,12 @@ def toFile(arg):
         os.set_inheritable(fd, True)
 
 def splitRed(arg):
-    temp = arg.split(" ")
-    first = [temp[0]]
-    second=""
+    temp = arg.split(" ")    #splits the list if needed. Part before or after "|" 
+    first = [temp[0]]        #first part will always be the first element of the list
+    second=""                #we don't know if there will be a second part
     i=1
-    while i < len(temp): 
-        if temp[i] == ">":
+    while i < len(temp):     #check for I/O redirection
+        if temp[i] == ">": 
             if i+1 < len(temp):
                 second = temp[i+1]
             if (i-1) != 0:
@@ -47,18 +49,19 @@ def changeDir(arg):
     except:
         os.write(3, ("\nIncorrect location\n").encode())
 
+#main running function
 def run(arg):
     pid = os.getpid()
     os.write(1, ("About to fork (pid=%d)\n" % pid).encode())
     
     #j=0
     isPipe = False
-    temp = arg.split(" | ")
+    temp = arg.split(" | ")  #splits the argument to detect if a pipe command was called
     if len(temp)>1:
         isPipe = True
         i=1
-        while i<len(temp):
-            if temp[i][0]==" ":
+        while i<len(temp):         #separates the remaining two parts of the command if it determines a pipe function
+            if temp[i][0]==" ":    #portion of code explained and provided by Ricardo Alvarez
                 temp[i]=temp[i][1:]
             length = len(temp)-1
             if temp[i][length]==" ":
@@ -79,29 +82,27 @@ def run(arg):
         #right = arg [j+1:]
         #print(left)
         #print(right)
-        r,w = os.pipe()
+        r,w = os.pipe()         #readable and writteable part of piping
         for fd in (r,w):
             os.set_inheritable(fd, True)
                     
-    rc = os.fork()
+    rc = os.fork()              #fork first child
     if rc<0:
         os.write(2, ("fork failed, returning %d\n" % rc).encode())
         sys.exit(1)
     elif rc==0:                       
-        first, second = splitRed(temp[0])
+        first, second = splitRed(temp[0])   #split (if needed) the left part of the command
         if isPipe:
-            os.close(1)
-            os.dup(w)
-            os.close(1)
-            os.dup(w)
-            for i in (r,w):
+            os.close(1)       #close file descriptor 1
+            os.dup(w)         #put writeable part of pipe in open fd
+            for i in (r,w):   #close r and w to use in other child
                 os.close(i)
         else:
-            toFile(second)
-        executeCommand(first)
+            toFile(second)               #if the command was not a pipe and determines it was an i/O redirection 
+        executeCommand(first)            #executes the command 
     else:
         if isPipe:   
-            rc2 = os.fork()
+            rc2 = os.fork()      #fork second child
             if rc2<0:
                 os.write(2, ("fork failed, returning %d\n" % rc).encode())
                 sys.exit(1)
@@ -109,18 +110,17 @@ def run(arg):
                 first, second = splitRed(temp[1])
                 os.close(1)
                 os.dup(w)
-                os.close(1)
-                os.dup(w)
                 for i in (r,w):
                     os.close(i)
                     executeCommand(first)
                 else:
-                    childPID = os.wait()
+                    #childPID = os.wait()
                     for pfd in (w,r):
                         os.close(pfd)
-        child2PID = os.wait()
+        #child2PID = os.wait()
 
 
+#main function
 def main():
     while True:
         arg = input("$ ")
@@ -137,8 +137,9 @@ def main():
                     pass
                     
         #if (arg[0] != "" ):
-        run(arg)
-                    
+        run(arg)                          #calls main running method
+
+#this makes python recognize the main function as the first thing to be called        
 if __name__ == "__main__":
     main()
                         
