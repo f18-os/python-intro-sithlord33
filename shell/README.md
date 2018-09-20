@@ -7,3 +7,4 @@ working when pressing enter without any arguments.
 I struggled a lot with this shell. I asked Ricardo Alvarez, and Eduardo Lara
 for help with my shell. I was able to finish thanks to them.
 
+Program to be executed is shellLab.py
