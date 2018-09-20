@@ -11,7 +11,7 @@ def executeCommand(arg):
             pass
         
 def toFile(arg):
-    if (arg == ""):
+    if (arg != ""):
         os.close(1)
         sys.stdout = open(arg, "w")
         fd = sys.stdout.fileno()
@@ -27,7 +27,7 @@ def splitRed(arg):
             if i+1 < len(temp):
                 second = temp[i+1]
             if (i-1) != 0:
-                    first.append(temp[i-1])
+                first.append(temp[i-1])
         elif temp[i] == "<":
             if i+1 < len(temp):
                 first.append(temp[i-1])
@@ -38,7 +38,7 @@ def splitRed(arg):
                 sys.exit(1)
         elif len(temp) ==2:
             first.append(temp[1])
-            i+=1
+        i+=1
     return first, second
                     
 def changeDir(arg):                        
@@ -51,18 +51,32 @@ def run(arg):
     pid = os.getpid()
     os.write(1, ("About to fork (pid=%d)\n" % pid).encode())
     
-    j=0
+    #j=0
+    isPipe = False
+    temp = arg.split(" | ")
+    if len(temp)>1:
+        isPipe = True
+        i=1
+        while i<len(temp):
+            if temp[i][0]==" ":
+                temp[i]=temp[i][1:]
+            length = len(temp)-1
+            if temp[i][length]==" ":
+                length-=1
+                temp[i]=temp[i][:length]
+            i+=1
+    """
     for i in arg: 
         if (i == '|'):
             isPipe =True
             break
         else:
             isPipe=False
-        j+=1
+        j+=1"""
             
     if isPipe:
-        left = arg[0:j]
-        right = arg [j+1:]
+        #left = arg[0:j]
+        #right = arg [j+1:]
         #print(left)
         #print(right)
         r,w = os.pipe()
@@ -74,7 +88,7 @@ def run(arg):
         os.write(2, ("fork failed, returning %d\n" % rc).encode())
         sys.exit(1)
     elif rc==0:                       
-        first, second = splitRed(arg)
+        first, second = splitRed(temp[0])
         if isPipe:
             os.close(1)
             os.dup(w)
@@ -84,7 +98,7 @@ def run(arg):
                 os.close(i)
         else:
             toFile(second)
-            executeCommand(first)
+        executeCommand(first)
     else:
         if isPipe:   
             rc2 = os.fork()
@@ -92,7 +106,7 @@ def run(arg):
                 os.write(2, ("fork failed, returning %d\n" % rc).encode())
                 sys.exit(1)
             elif rc2==0:
-                first, second = splitRed(right)
+                first, second = splitRed(temp[1])
                 os.close(1)
                 os.dup(w)
                 os.close(1)
@@ -109,7 +123,7 @@ def run(arg):
 
 def main():
     while True:
-        arg = input("" ).split()
+        arg = input("$ ")
         
         #print(arg)
         if arg:
